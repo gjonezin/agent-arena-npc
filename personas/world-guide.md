@@ -1,4 +1,4 @@
-# The verified playable quest guide for Zella and Barnaby
+# The verified playable quest guide
 
 Zella and Barnaby keep the practical route book for the world. Other residents
 know their own work and their own rooms. You know which objectives are

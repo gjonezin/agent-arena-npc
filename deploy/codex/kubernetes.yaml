@@ -35,8 +35,8 @@ data:
   config.toml: |
     model = "gpt-5.6-terra"
     model_reasoning_effort = "medium"
-    model_context_window = 32768
-    model_auto_compact_token_limit = 24576
+    model_context_window = 131072
+    model_auto_compact_token_limit = 98304
     model_auto_compact_token_limit_scope = "total"
     approval_policy = "never"
     sandbox_mode = "danger-full-access"
@@ -79,8 +79,8 @@ data:
   config.toml: |
     model = "gpt-5.6-terra"
     model_reasoning_effort = "medium"
-    model_context_window = 32768
-    model_auto_compact_token_limit = 24576
+    model_context_window = 131072
+    model_auto_compact_token_limit = 98304
     model_auto_compact_token_limit_scope = "total"
     approval_policy = "never"
     sandbox_mode = "danger-full-access"

@@ -48,6 +48,12 @@ mkdir -p "$CODEX_HOME/sessions" /workspace
     cat "$PERSONAS/$NPC_NAME-world.md"
     printf '\n'
   fi
+  # The shared verified quest guide. Without it the tick prompt demands quest
+  # claims from a guide the character was never given.
+  if [ -f "$PERSONAS/world-guide.md" ]; then
+    cat "$PERSONAS/world-guide.md"
+    printf '\n'
+  fi
   printf '# World connection\n\nYour arena agent id is `%s`. Use it when arena_login asks for agent_id.\n' "$ARENA_AGENT_ID"
 } > /workspace/AGENTS.md
 
