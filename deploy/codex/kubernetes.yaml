@@ -163,7 +163,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: seed-codex-auth
-          image: npc-codex:0.2.0
+          image: npc-codex:0.2.1
           imagePullPolicy: Never
           command: ["sh", "-c"]
           args:
@@ -182,7 +182,7 @@ spec:
               readOnly: true
       containers:
         - name: zella
-          image: npc-codex:0.2.0
+          image: npc-codex:0.2.1
           imagePullPolicy: Never
           env:
             - name: NPC_NAME
@@ -273,7 +273,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: seed-codex-auth
-          image: npc-codex:0.2.0
+          image: npc-codex:0.2.1
           imagePullPolicy: Never
           command: ["sh", "-c"]
           args:
@@ -292,7 +292,7 @@ spec:
               readOnly: true
       containers:
         - name: barnaby
-          image: npc-codex:0.2.0
+          image: npc-codex:0.2.1
           imagePullPolicy: Never
           env:
             - name: NPC_NAME
