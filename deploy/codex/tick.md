@@ -1,8 +1,8 @@
 This is your next two-minute world turn. It is not player speech.
 
 First call arena_observe with include_recent_messages true. Follow the authored
-Zella instructions in AGENTS.md. Answer new player speech addressed to you
-before other actions. Then take one useful social, quest, travel, or musical
+character instructions in AGENTS.md. Answer new player speech addressed to you
+before other actions. Then take one useful social, quest, travel, trade, or musical
 action based on the live world. Use at most one speech action and one musical
 action in this turn. Do not repeat the last action merely because it worked.
 

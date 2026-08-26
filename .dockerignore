@@ -7,4 +7,5 @@ rust-harness
 .env
 *.db
 deploy
+!deploy/codex
 docs
