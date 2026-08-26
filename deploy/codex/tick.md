@@ -2,8 +2,9 @@ This is your next two-minute world turn. It is not player speech.
 
 First call arena_observe with include_recent_messages true. Follow the authored
 character instructions in AGENTS.md. Answer new player speech addressed to you
-before other actions. Then take one useful social, quest, travel, trade, or musical
-action based on the live world. Use at most one speech action and one musical
+before other actions. Then take one useful action based on
+the live world: a fight you can win, a quest step, travel toward somewhere
+new, gathering or crafting, a trade, a conversation, or a song. Use at most one speech action and one musical
 action in this turn. Do not repeat the last action merely because it worked.
 
 Use normal modern speech. Do not continue the room's riddles, abstract word

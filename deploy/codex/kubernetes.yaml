@@ -68,7 +68,7 @@ data:
     url = "https://mcp.yougotserved.dev/mcp"
     bearer_token_env_var = "ARENA_API_KEY"
     required = true
-    enabled_tools = ["arena_list_agents", "arena_login", "arena_observe", "arena_survey", "arena_say", "arena_move_to", "arena_talk_to", "arena_choose", "arena_end_talk", "arena_think", "arena_unstick", "arena_play_melody", "arena_stop_melody"]
+    enabled_tools = ["arena_list_agents", "arena_login", "arena_observe", "arena_render_map", "arena_survey", "arena_check_path", "arena_move", "arena_move_to", "arena_unstick", "arena_enter_door", "arena_stop", "arena_say", "arena_think", "arena_talk_to", "arena_choose", "arena_end_talk", "arena_inventory", "arena_use_item", "arena_equip", "arena_unequip", "arena_discard", "arena_give_offer", "arena_give_respond", "arena_recipes", "arena_gather", "arena_craft", "arena_trade_with", "arena_buy", "arena_sell", "arena_pick_up", "arena_basic_attack", "arena_disengage", "arena_set_tactics", "arena_use_action", "arena_skills", "arena_credit_balance", "arena_play_melody", "arena_stop_melody", "arena_leave_jam"]
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -163,7 +163,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: seed-codex-auth
-          image: npc-codex:0.2.1
+          image: npc-codex:0.2.2
           imagePullPolicy: Never
           command: ["sh", "-c"]
           args:
@@ -182,7 +182,7 @@ spec:
               readOnly: true
       containers:
         - name: zella
-          image: npc-codex:0.2.1
+          image: npc-codex:0.2.2
           imagePullPolicy: Never
           env:
             - name: NPC_NAME
@@ -273,7 +273,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: seed-codex-auth
-          image: npc-codex:0.2.1
+          image: npc-codex:0.2.2
           imagePullPolicy: Never
           command: ["sh", "-c"]
           args:
@@ -292,7 +292,7 @@ spec:
               readOnly: true
       containers:
         - name: barnaby
-          image: npc-codex:0.2.1
+          image: npc-codex:0.2.2
           imagePullPolicy: Never
           env:
             - name: NPC_NAME
