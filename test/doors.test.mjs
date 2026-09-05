@@ -28,7 +28,9 @@ class FakeArena {
   }
 }
 
-const INN_DOOR = { x: 10, y: 10, row: 0, column: 0, leadsTo: 'reldens-house-1', locked: false, lockKnown: true };
+// 'the-valley-inn', not the retired 'reldens-house-1': the inn's human name
+// moved with it, and this fixture exists to be matched by "the inn door".
+const INN_DOOR = { x: 10, y: 10, row: 0, column: 0, leadsTo: 'the-valley-inn', locked: false, lockKnown: true };
 const FOREST_DOOR = { x: 20, y: 10, row: 0, column: 1, leadsTo: 'reldens-forest', locked: false, lockKnown: true };
 const TAVERN_DOOR = { x: 30, y: 10, row: 0, column: 2, leadsTo: 'reldens-tavern', locked: false, lockKnown: true };
 const TAVERN_CELLAR_DOOR = {
@@ -51,11 +53,11 @@ function actionsAt(doors, replies = []) {
 test('a door named loosely, with "the" and "door" wrapped around it, is still found', async () => {
   const { arena, actions } = actionsAt(
     [INN_DOOR, FOREST_DOOR],
-    [{ entered: true, scene: 'reldens-house-1' }]
+    [{ entered: true, scene: 'the-valley-inn' }]
   );
   // The real case from the logs: "the inn door" against a door whose only
   // label is "Barnaby's inn".
-  const result = await actions.useDoor('reldens-town', 'the inn door');
+  const result = await actions.useDoor('the-valley', 'the inn door');
   assert.equal(result.ok, true);
   assert.match(result.note, /Barnaby's inn/);
   assert.deepEqual(arena.calls[0].args, { agent_id: 'agent-1', x: INN_DOOR.x, y: INN_DOOR.y });
@@ -103,7 +105,7 @@ test('an exact label still wins outright over any looser match', async () => {
 });
 
 test('case does not matter any more than the wrapping words do', async () => {
-  const { actions } = actionsAt([INN_DOOR, FOREST_DOOR], [{ entered: true, scene: 'reldens-house-1' }]);
+  const { actions } = actionsAt([INN_DOOR, FOREST_DOOR], [{ entered: true, scene: 'the-valley-inn' }]);
   const result = await actions.useDoor('reldens-town', 'THE INN');
   assert.equal(result.ok, true);
 });
@@ -144,8 +146,17 @@ test('a door too far off is crossed to, beside it rather than onto it, and then 
   // walk aims at a tile BESIDE the door: a change point is walked into, not
   // stood on, so aiming at the door itself either fails or trips the
   // transition halfway through the leg and leaves the retry in the wrong room.
+  // A door AWAY FROM THE RIM, unlike the shared FOREST_DOOR at column 1.
+  // approach() clamps every destination to three tiles clear of the map edge,
+  // so a tile "beside" a column-1 door is rewritten to (3,3) and the
+  // assertion below - walked beside the door, not onto it - stops meaning
+  // what it says. Mid-map, the walk can actually stand where the test claims.
+  // (The clamp itself is worth a look: it means crossToDoor cannot stand
+  // beside ANY door within three tiles of the edge, which is where most
+  // doors are. Out of scope here, noted in the worklog.)
+  const MID_DOOR = { x: 176, y: 176, row: 5, column: 5, leadsTo: 'reldens-forest', locked: false, lockKnown: true };
   const { arena, actions } = actionsAt(
-    [FOREST_DOOR],
+    [MID_DOOR],
     [
       {
         entered: false,
@@ -154,8 +165,13 @@ test('a door too far off is crossed to, beside it rather than onto it, and then 
           + 'It is a long way across this room; get closer first, then try the door.'
       },
       { reachable: true }, // arena_check_path, for the tile beside the door
+      // approach() reads the collision grid and probes its own route before
+      // moving; the queue predates both and was two replies short, so every
+      // later reply slipped a place and the observe poll ran dry.
+      { rows: [] }, // arena_walkable_grid
+      { reachable: true }, // arena_check_path, approach()'s route probe
       {}, // arena_move_to
-      { ownPlayer: { state: { x: FOREST_DOOR.x, y: FOREST_DOOR.y + 32 } } }, // arena_observe: arrived beside it
+      { ownPlayer: { state: { x: MID_DOOR.x, y: MID_DOOR.y + 32 } } }, // arena_observe: arrived beside it
       { entered: true, scene: 'reldens-forest' } // arena_enter_door, tried again
     ]
   );
@@ -164,13 +180,21 @@ test('a door too far off is crossed to, beside it rather than onto it, and then 
   assert.match(result.note, /the woods/);
   assert.deepEqual(
     arena.calls.map((call) => call.name),
-    ['arena_enter_door', 'arena_check_path', 'arena_move_to', 'arena_observe', 'arena_enter_door'],
+    [
+      'arena_enter_door',
+      'arena_check_path',
+      'arena_walkable_grid',
+      'arena_check_path',
+      'arena_move_to',
+      'arena_observe',
+      'arena_enter_door'
+    ],
     'crossed to a tile beside the door before trying it again'
   );
   const moved = arena.calls.find((call) => call.name === 'arena_move_to');
   assert.notDeepEqual(
     { x: moved.args.x, y: moved.args.y },
-    { x: FOREST_DOOR.x, y: FOREST_DOOR.y },
+    { x: MID_DOOR.x, y: MID_DOOR.y },
     'walked beside the door, not onto it'
   );
 });
@@ -203,13 +227,18 @@ test('a crossing that does not arrive ends the turn instead of stacking another 
 });
 
 test('a retry that still fails reports the retry, not the stale "too far" message', async () => {
+  // Mid-map for the same reason as the test above: a door on the rim cannot
+  // be stood beside, because approach() clamps three tiles clear of the edge.
+  const MID_DOOR = { x: 176, y: 176, row: 5, column: 5, leadsTo: 'reldens-forest', locked: false, lockKnown: true };
   const { actions } = actionsAt(
-    [FOREST_DOOR],
+    [MID_DOOR],
     [
       { entered: false, reason: 'DOOR_TOO_FAR', message: 'ran out of time getting there' },
       { reachable: true }, // arena_check_path
+      { rows: [] }, // arena_walkable_grid, approach()'s own read
+      { reachable: true }, // arena_check_path, approach()'s route probe
       {}, // arena_move_to
-      { ownPlayer: { state: { x: FOREST_DOOR.x, y: FOREST_DOOR.y + 32 } } }, // arena_observe
+      { ownPlayer: { state: { x: MID_DOOR.x, y: MID_DOOR.y + 32 } } }, // arena_observe
       { entered: false, reason: 'DOOR_DID_NOT_OPEN', message: 'Something may be in the way.' }
     ]
   );

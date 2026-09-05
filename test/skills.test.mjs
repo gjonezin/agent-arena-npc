@@ -65,23 +65,44 @@ test('a mage casting fireball sends the skill, not the default swing', async () 
   );
 });
 
-test('a swordsman asking for fireball is told no, not left wondering', async () => {
+test('an unlisted skill is attempted, because the roster lags the class', async () => {
+  // REVERSED ON PURPOSE (2026-08-16). This used to assert the harness refused
+  // a skill missing from the session's roster. The source stopped doing that
+  // deliberately - see the note in actions.ts useSkill(): a Magus login still
+  // reports the old warlock three, so the roster is not authoritative, and
+  // refusing on it meant "every character reported having no skills of its
+  // own and use_skill could never fire" (npc.ts). The game server is the only
+  // thing that actually knows, and it rejects an impossible skill itself.
+  // So the harness sends it and lets the world answer.
   const arena = arenaSeeing([ASHLING]);
   const actions = mageWith(arena, ['attackShort', 'heal']);
   actions.notices([ASHLING]);
   const result = await actions.useSkill('fireball', 'Ashling');
 
-  assert.equal(result.ok, false);
-  assert.match(result.note, /not something this character can do/);
-  assert.match(result.note, /attackShort, heal/, 'and is told what it does have');
-  assert.ok(!arena.calls.some((call) => call.tool === 'arena_use_action'));
+  assert.equal(result.ok, true, 'an unlisted skill is tried, not refused out of hand');
+  assert.match(result.note, /fireball/, 'and the note names what was cast');
+  assert.ok(
+    arena.calls.some((call) => 'arena_use_action' === call.tool),
+    'the request actually reaches the world, which is the only authority on it'
+  );
 });
 
-test('a character with no skills at all says so plainly', async () => {
-  const actions = mageWith(arenaSeeing([ASHLING]), []);
-  const result = await actions.useSkill('fireball', 'Ashling');
+test('a skill with no name given is refused before it reaches the world', async () => {
+  // The refusal that IS still real. The old companion to this test asserted
+  // "no skills of its own" for an empty roster, which the source no longer
+  // says - and that test never called notices(), so it was really exercising
+  // the nobody-here branch by accident. A nameless skill is the honest case:
+  // there is nothing to send, so nothing is sent.
+  const arena = arenaSeeing([ASHLING]);
+  const actions = mageWith(arena, []);
+  actions.notices([ASHLING]);
+  const result = await actions.useSkill(undefined, 'Ashling');
+
   assert.equal(result.ok, false);
-  assert.match(result.note, /no skills of its own/);
+  assert.ok(
+    !arena.calls.some((call) => 'arena_use_action' === call.tool),
+    'and nothing was asked of the world'
+  );
 });
 
 test('casting at nothing that is here is a no rather than a swing at air', async () => {

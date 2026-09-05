@@ -23,10 +23,22 @@ const empty = () => WorkingMemorySchema.parse({});
 test('a character starts out knowing only its own town', () => {
   // Everything else is discovered. If this list grows to cover the map, every
   // character is omniscient again and nothing is worth telling anybody.
-  assert.deepEqual(Object.keys(PLACES).sort(), ['reldens-house-1', 'reldens-town']);
-  assert.equal(isHomeTurf('reldens-town'), true);
+  //
+  // Three rooms now rather than two, and the third is deliberate: Miller's
+  // Stair is the ground the pair works every round, so knowing its gate and
+  // its three nearest bays is knowing your own workplace, not omniscience.
+  // The 192x176 maze past those bays is unmapped and still has to be walked.
+  assert.deepEqual(
+    Object.keys(PLACES).sort(),
+    ['millers-stair', 'the-valley', 'the-valley-inn']
+  );
+  assert.equal(isHomeTurf('the-valley'), true);
+  // Nobody is at home in the retired demo rooms any more - and nobody is at
+  // home in the valley's other five interiors either. Those get walked into
+  // and looked at, which is the whole point.
+  assert.equal(isHomeTurf('reldens-town'), false);
   assert.equal(isHomeTurf('reldens-forest'), false);
-  assert.equal(isHomeTurf('reldens-house-2'), false);
+  assert.equal(isHomeTurf('the-valley-smithy'), false);
 });
 
 test('what you were told is kept apart from what you saw', () => {
@@ -88,9 +100,9 @@ test('a two-tile gateway is one door, not two', () => {
 test('doors are described by where they go', () => {
   const described = describeDoors(
     {
-      scene: 'reldens-town',
+      scene: 'the-valley',
       doors: [
-        { x: 400, y: 304, row: 9, column: 12, leadsTo: 'reldens-house-1', locked: false, lockKnown: true },
+        { x: 400, y: 304, row: 9, column: 12, leadsTo: 'the-valley-inn', locked: false, lockKnown: true },
         { x: 592, y: 16, row: 0, column: 18, leadsTo: 'reldens-forest', locked: true, lockKnown: true }
       ],
       map: '',

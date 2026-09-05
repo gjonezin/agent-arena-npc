@@ -112,8 +112,11 @@ test('deciding what you want is an action, not something memory can be talked in
 test('a local can name the real places, and is told there are no others', async () => {
   const { describeLocalKnowledge, TOWN, INN } = await import('../dist/harness/world.js');
   const known = describeLocalKnowledge([TOWN], INN);
-  assert.match(known, /the east gate/);
-  assert.match(known, /outside the inn/);
+  // Valley places now. The east gate and the street outside the inn belonged
+  // to the retired demo town; the invariant is untouched - a local names real
+  // places, and is told plainly that there are no others.
+  assert.match(known, /the north road/);
+  assert.match(known, /the inn door/);
   // The sentence that stops the gaps being filled in with a guildhall.
   assert.match(known, /no others you know of/);
 });

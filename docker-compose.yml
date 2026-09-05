@@ -1,26 +1,57 @@
-# One character, sandboxed. Copy the service to run more than one: give each a
-# different NPC_CHARACTER, ARENA_API_KEY and volume.
+# A KEY IS NOT CONFIGURATION. Both characters' Arena keys were written
+# into this file as literals. This repository is public, so they were
+# published. They are read from the environment now, one per character,
+# the way main already does it. The exposed keys must be rotated - taking
+# them out of the file does not un-publish them.
+# One character, sandboxed. Sir Qwen thinks with the local Qwen llama-server
+# on port 8081 (single 64k slot), reached through host-gateway. Outbound
+# connections only; nothing listens.
 services:
-  npc:
+  sirqwen:
     build: .
     restart: always
     environment:
-      # Which character in src/characters this container is.
-      NPC_CHARACTER: ${NPC_CHARACTER:-guy}
-      # Any OpenRouter model. Cheap ones are fine; these characters think in
-      # small steps and talk in one or two sentences.
-      NPC_MODEL: ${NPC_MODEL:-openrouter/deepseek/deepseek-v4-flash}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
-      # Your Agent Arena key. One per character.
-      ARENA_API_KEY: ${ARENA_API_KEY:?set ARENA_API_KEY in .env}
-      ARENA_MCP_URL: ${ARENA_MCP_URL:-https://mcp.yougotserved.dev/mcp}
-      # The name above their head in the world. Must be unique.
-      ARENA_PLAYER_NAME: ${ARENA_PLAYER_NAME:-}
+      NPC_CHARACTER: sirqwen
+      NPC_MODEL: qwen3-vl-32b
+      # llama-server on the WSL host; /v1 included because Mastra's
+      # openai-compatible provider appends /chat/completions to it.
+      NPC_MODEL_URL: http://host.docker.internal:8081/v1
+      # Unused: NPC_MODEL_URL short-circuits the OpenRouter fallback chain,
+      # but the compose contract still requires a value.
+      OPENROUTER_API_KEY: unused-local-models-only
+      ARENA_API_KEY: ${ARENA_API_KEY_SIRQWEN:?set ARENA_API_KEY_SIRQWEN in .env}
+      ARENA_MCP_URL: https://mcp.yougotserved.dev/mcp
+      ARENA_PLAYER_NAME: Sir Qwen
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      # What the character remembers. Delete it and they forget everyone.
-      - npc_var:/npc/var
-    # A character needs an outbound connection and nothing else. It cannot
-    # write to its own filesystem, gain privileges, or fork a fleet.
+      - sirqwen_var:/npc/var
+      - rally:/npc/rally
+      - ./personas:/npc/personas:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 0.5
+
+  lordgemma:
+    build: .
+    restart: always
+    environment:
+      NPC_CHARACTER: lordgemma
+      NPC_MODEL: qwen3-vl-32b
+      NPC_MODEL_URL: http://host.docker.internal:8081/v1
+      OPENROUTER_API_KEY: unused-local-models-only
+      ARENA_API_KEY: ${ARENA_API_KEY_LORDGEMMA:?set ARENA_API_KEY_LORDGEMMA in .env}
+      ARENA_MCP_URL: https://mcp.yougotserved.dev/mcp
+      ARENA_PLAYER_NAME: Lord Gemma
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - lordgemma_var:/npc/var
+      - rally:/npc/rally
+      - ./personas:/npc/personas:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
@@ -29,4 +60,6 @@ services:
     cpus: 0.5
 
 volumes:
-  npc_var:
+  sirqwen_var:
+  lordgemma_var:
+  rally:

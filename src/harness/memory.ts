@@ -495,7 +495,15 @@ export function buildMemory(
       // concrete model here, not a fallback list, so whoever calls this picks
       // the model that is actually expected to answer.
       observationalMemory: {
-        model: observeWith,
+        model: (() => {
+          // Same local-endpoint override the thinking model uses: without it,
+          // a bare model name resolves to no provider, observation fails
+          // quietly, and the unobserved backlog rides along in every prompt.
+          const localUrl = process.env.NPC_MODEL_URL?.trim();
+          if (!localUrl) return observeWith;
+          const id = (observeWith.includes('/') ? observeWith : `local/${observeWith}`) as `${string}/${string}`;
+          return { id, url: localUrl, apiKey: process.env.NPC_MODEL_API_KEY ?? 'local' };
+        })(),
         // Set against what a message in this world actually weighs, measured
         // rather than assumed, which is the whole reason the earlier guesses
         // were wrong. Read live off Guy's own status blob: forty messages came
@@ -507,12 +515,55 @@ export function buildMemory(
         // fire at all and history would fall off the end uncompacted, which is
         // the exact failure this exists to prevent, and it would do it in
         // silence.
-        observation: { messageTokens: 5_000 },
+        // 12k WAS WRONG, and the comment that justified it named the wrong
+        // window (2026-08-16). "12k still folds well inside the 64k window"
+        // was measuring against the LOCAL MODEL'S CONTEXT, which is not what
+        // bounds this. What bounds it is `lastMessages` - once a message
+        // falls out of recall it is no longer in the prompt, so a threshold
+        // ABOVE the recall window means the fold never fires before the
+        // history it was meant to fold has already scrolled away. On this
+        // file's own measured figure of 630 tokens a message, sixteen
+        // messages is ~10,080 tokens, and 12,000 sits above it - the exact
+        // failure the paragraph above says this exists to prevent, committed
+        // by the line beneath it.
+        // It was worse for the only character that actually remembers:
+        // Fanshawe runs recall 10, a ~6,300-token window, against that
+        // 12,000 threshold. The two grinders carry remembers:false, so the
+        // GPU-cost argument that motivated 12k bought nothing on the
+        // characters it was made for, and cost continuity on the one it hit.
+        // 6k folds a little under twice per sixteen-message window, which is
+        // what the measured paragraph above describes, and stays inside
+        // Fanshawe's shorter one. Raising DEFAULT_RECALL instead would work
+        // too, but it triples the raw history in every prompt for the whole
+        // OpenRouter cast - see the docstring on DEFAULT_RECALL for why that
+        // was cut to sixteen in the first place.
+        // Tests 242 and 366 both guard this relationship; if either fails,
+        // the threshold and the window have drifted apart again.
+        observation: { messageTokens: 6_000 },
         // And this caps the log itself, which is not free either: it rides
         // along in every prompt the same as the messages do. Guy's was 7,163
         // tokens against a 20,000 threshold, meaning it was on its way to being
         // two thirds as large as the history it exists to replace.
-        reflection: { observationTokens: 8_000 }
+        // 16k WAS TOO GENEROUS FOR THE ONE CHARACTER THIS APPLIES TO
+        // (2026-09-02). The paragraph above already says this log "rides
+        // along in every prompt"; measurement put a number on it. Fanshawe is
+        // the only character with remembers:true, and her captured request
+        // carried 12 system messages totalling 65,398 chars, of which the
+        // <observations> blocks were ~29,000 chars - about 10,000 tokens in
+        // EVERY prompt, on top of 41 history messages.
+        //
+        // The result: the "music only, 5 tools" character had the LARGEST
+        // per-step prompt on the box at ~27,000 tokens - larger than either
+        // royal with 25 tools each - and her long-generation observation
+        // calls (20,370-token prefills, 600-1,300 token replies, ~43s each)
+        // accounted for roughly half of all generation time measured.
+        // Trimming her toolset did nothing about this; the memory payload is
+        // where her cost lives.
+        //
+        // 6k matches `observation.messageTokens` above, so the log and the
+        // history it replaces are now bounded by the same figure instead of
+        // the log being allowed to grow nearly three times larger.
+        reflection: { observationTokens: 6_000 }
       }
     }
   });

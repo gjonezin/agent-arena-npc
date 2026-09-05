@@ -203,7 +203,11 @@ test('buying with nothing named asks what is for sale instead of failing', async
   const result = await actions.buy(undefined, undefined);
 
   assert.equal(result.ok, true);
-  assert.match(result.note, /Gimly sells: Tonic for 5 coins/);
+  // COPPER, AND THE SERVER'S OWN NOTATION FOR IT. The fixture above sends
+  // `{itemKey:'coins', quantity:5}`, and a quantity is copper everywhere in
+  // this world (the purse fixture below reads 7648, not 76). "5 coins" was a
+  // unit label we invented; describeAmount renders that amount "5c".
+  assert.match(result.note, /Gimly sells: Tonic for 5c/);
   const asked = arena.calls.find((call) => call.tool === 'arena_trade_with');
   assert.equal(asked.args.object_id, 10, 'the merchant is named by the id, never by the label');
   assert.equal(asked.args.side, 'buy');
@@ -226,7 +230,7 @@ test('buying names the merchant, the item and the count, and reports the price',
   const result = await actions.buy('Tonic', 2);
 
   assert.equal(result.ok, true);
-  assert.match(result.note, /bought Tonic x2 for 10 coins from Gimly/);
+  assert.match(result.note, /bought Tonic x2 for 10c from Gimly/);
   const sent = arena.calls.find((call) => call.tool === 'arena_buy');
   assert.deepEqual(sent.args, { agent_id: GUY, object_id: 10, item: 'Tonic', quantity: 2 });
 });
@@ -262,8 +266,81 @@ test('selling sends the sell side and says what it was paid', async () => {
   const result = await actions.sell('Pelt', undefined);
 
   assert.equal(result.ok, true);
-  assert.match(result.note, /sold Pelt for 2 coins from Gimly/);
+  assert.match(result.note, /sold Pelt for 2c from Gimly/);
   assert.equal(arena.calls.find((call) => call.tool === 'arena_sell').args.quantity, 1);
+});
+
+// --- what the round is allowed to sweep into a sale --------------------
+
+test('sellableItems never offers coins, but does offer a carried tarnished key at its real quantity', () => {
+  // agentArena #114 (server content audit, 2026-08-15): no door in the
+  // world is locked, the key opens nothing, its only function is a
+  // 300-currency sale. It stopped being an exclusion the day this landed -
+  // regressing back to protecting it would just be hoarding dead weight.
+  const actions = shopper(arenaWhere());
+  const coins = { key: 'coins', label: 'Coins', quantity: 7648, usable: false, equipment: false, equipped: false };
+  const key = { key: 'tarnished_key', label: 'Tarnished Key', quantity: 4, usable: false, equipment: false, equipped: false };
+  actions.holds([coins, key, pelt, blade], []);
+  const offered = actions.sellableItems();
+  assert.deepEqual(
+    offered.map((it) => it.key).sort(),
+    ['pelt', 'tarnished_key'],
+    'money and worn gear are never in the sale; the key and other cargo are'
+  );
+  assert.equal(offered.find((it) => 'tarnished_key' === it.key).quantity, 4, 'the key sells at its real stacked quantity');
+});
+
+test('sellableItems reports each row as the gateway actually gave it - a real pack is not stacked', () => {
+  // Measured live 2026-08-15: a farming pack does not carry one
+  // {key:'branch', quantity:N} row. It carries N separate
+  // {key:'branch', quantity:1} rows - a fix that assumed otherwise shipped
+  // once, was caught by a review pulling the real inventory, and must not
+  // regress silently back to that assumption.
+  const actions = shopper(arenaWhere());
+  const branches = Array.from({ length: 5 }, () => (
+    { key: 'branch', label: 'Branch', quantity: 1, usable: false, equipment: false, equipped: false }
+  ));
+  const coins = { key: 'coins', label: 'Coins', quantity: 7648, usable: false, equipment: false, equipped: false };
+  actions.holds([coins, ...branches], []);
+  const offered = actions.sellableItems();
+  assert.equal(offered.length, 5, 'five unstacked rows stay five rows, not one merged row of five');
+  assert.ok(offered.every((it) => 'branch' === it.key && 1 === it.quantity), 'each row keeps its own real quantity');
+});
+
+test('sellableItems sends the row real quantity, not a hardcoded one - a row that IS stacked proves it', () => {
+  // Coins are the only thing confirmed stacked live that isCargo() still
+  // excludes, so they can't stand in for "a stacked cargo row" in a test
+  // (the tarnished-key test above already covers the real one). This is a
+  // stacked CARGO row on paper only, to pin down that sellableItems() reads
+  // quantity off the item rather than assuming 1 - the earlier tests all
+  // used quantity 1 fixtures, which a hardcoded 1 would also have passed.
+  const actions = shopper(arenaWhere());
+  const pile = { key: 'branch', label: 'Branch', quantity: 12, usable: false, equipment: false, equipped: false };
+  actions.holds([pile], []);
+  const offered = actions.sellableItems();
+  assert.equal(offered.length, 1, 'one row in, one row out');
+  assert.equal(offered[0].quantity, 12, 'the real owned quantity, not a hardcoded 1');
+});
+
+test('carriedBranches weighs cargo worth banking - not the purse, and not a copper of branches', () => {
+  // The tarnished key is ordinary cargo since #114 (see isCargo()), so its
+  // quantity counts toward the bag-full trigger same as any other junk.
+  // Coins never did. Branches no longer do either, and that is the point of
+  // this test: the round banks at 50 of whatever this returns, and a body
+  // carrying ~167 branches worth about 167 copper all told sat permanently
+  // over the line. Measured 2026-08-16 - it reached the field, was told the
+  // bag was full, turned straight back to town, and fought NOTHING for an
+  // hour while boars worth ~224 copper a kill stood around it. A bank run
+  // is for a bag of valuables; near-worthless rows must not be able to call
+  // one. They still sell during an ordinary rest, last in the queue.
+  const actions = shopper(arenaWhere());
+  const coins = { key: 'coins', label: 'Coins', quantity: 7648, usable: false, equipment: false, equipped: false };
+  const key = { key: 'tarnished_key', label: 'Tarnished Key', quantity: 4, usable: false, equipment: false, equipped: false };
+  const branches = Array.from({ length: 5 }, () => (
+    { key: 'branch', label: 'Branch', quantity: 1, usable: false, equipment: false, equipped: false }
+  ));
+  actions.holds([coins, key, ...branches], []);
+  assert.equal(actions.carriedBranches(), 4, 'the four keys count; neither the purse nor the branches do');
 });
 
 test('a character without the trade capability cannot shop at all', async () => {

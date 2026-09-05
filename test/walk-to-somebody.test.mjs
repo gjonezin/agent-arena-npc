@@ -71,6 +71,13 @@ function actionsWith(replies = []) {
 test('somebody standing here is reached by name, not exploring at random', async () => {
   const { arena, actions } = actionsWith([
     { reachable: true }, // arena_check_path, first tile tried beside Old Ferro
+    // approach() reads the collision grid and probes its own route before it
+    // moves, so a walk is FOUR calls, not two. The queue was written when it
+    // was two and has been two replies short ever since - the shortfall
+    // slipped every later reply one place and the run died on an exhausted
+    // queue rather than on anything the test was actually asserting.
+    { rows: [] }, // arena_walkable_grid, approach()'s own read
+    { reachable: true }, // arena_check_path, approach()'s route probe
     {}, // arena_move_to
     { ownPlayer: { state: { x: 336, y: 368 } } } // arena_observe, already there
   ]);
@@ -84,7 +91,8 @@ test('somebody standing here is reached by name, not exploring at random', async
     name: 'arena_check_path',
     args: { agent_id: 'agent-1', x: 336, y: 368 } // tile (10, 11): one south of him
   });
-  assert.deepEqual(arena.calls[1], {
+  // calls[1] and [2] are approach()'s grid read and route probe; the move is [3].
+  assert.deepEqual(arena.calls[3], {
     name: 'arena_move_to',
     args: { agent_id: 'agent-1', x: 336, y: 368 }
   });
@@ -93,6 +101,8 @@ test('somebody standing here is reached by name, not exploring at random', async
 test('a name loosely given still finds the one person it could mean', async () => {
   const { actions } = actionsWith([
     { reachable: true },
+    { rows: [] }, // arena_walkable_grid - see the note on the test above
+    { reachable: true }, // arena_check_path, approach()'s route probe
     {},
     { ownPlayer: { state: { x: 336, y: 368 } } }
   ]);

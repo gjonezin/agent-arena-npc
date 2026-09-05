@@ -17,10 +17,26 @@ import assert from 'node:assert/strict';
 
 import { SCENE_NAMES, plainSceneName, rawSceneName } from '../dist/harness/world.js';
 
-/** Every room in the live world, from `SELECT name FROM rooms` on the VPS. */
+/**
+ * Every room in the live world, from `SELECT name FROM rooms` on the VPS.
+ *
+ * The valley and its six interiors, plus Miller's Stair above it, added
+ * 2026-08-21: those are the rooms characters actually stand in now. Two names
+ * left this list at the same time - `reldens-town` and `reldens-house-1` were
+ * retired upstream (ec2126 brought their content into the valley), and their
+ * human names went to the rooms that replaced them. A retired room needs no
+ * name of its own; if a stale door ever names one, rawSceneName() still reads
+ * it as "town", which is in character even when the room is not there.
+ */
 const EVERY_ROOM = [
-  'reldens-town',
-  'reldens-house-1',
+  'the-valley',
+  'the-valley-inn',
+  'the-valley-smithy',
+  'the-valley-mage',
+  'the-valley-trading-post',
+  'the-valley-grange',
+  'the-valley-shrine',
+  'millers-stair',
   'reldens-house-1-2d-floor',
   'reldens-house-2',
   'reldens-forest',

@@ -47,11 +47,19 @@ test('the whole cast, all ten characters, still has unique ids and player names'
 });
 
 test('Nerys and Ash carry the full capability list, not a reduced one', () => {
+  // EVERY capability EXCEPT 'perform' (2026-08-16). `perform` unlocks
+  // arena_play_melody and belongs to exactly one character - Fanshawe, the
+  // bard - so "the full list" was never literally CAPABILITIES for a
+  // player agent, and this compared against it anyway. The point of the
+  // test is that these sheets are not quietly reduced relative to Guy's,
+  // which the second assertion below states directly; the first now says
+  // the same thing without demanding a bard's tool.
+  const forPlayers = new Set(CAPABILITIES.filter((c) => 'perform' !== c));
   for (const [id, sheet] of Object.entries(PLAYER_AGENTS)) {
     assert.deepEqual(
       new Set(sheet.capabilities),
-      new Set(CAPABILITIES),
-      `${id} should have every capability the harness knows about, same as Guy`
+      forPlayers,
+      `${id} should have every capability the harness knows about bar the bard's, same as Guy`
     );
   }
   // The claim only means something if it actually matches Guy's own set.

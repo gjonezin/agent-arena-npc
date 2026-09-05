@@ -46,7 +46,7 @@ export const ash: CharacterSheet = {
   homeScene: 'arena-dungeon',
   persona: loadPersona('ash'),
   model: process.env.NPC_MODEL ?? 'openrouter/openai/gpt-oss-120b',
-  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'money', 'trade', 'purpose'],
+  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'craft', 'money', 'trade', 'purpose'],
   behavior: (agent: Agent) => new Autonomous(agent),
   goal: {
     aim: 'find out whether you are the only thing down here that thinks, '

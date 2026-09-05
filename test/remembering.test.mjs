@@ -73,9 +73,20 @@ test('compaction is set to fire inside the window rather than never', () => {
   // never: four hundred of their messages come to 11,000 to 17,000 tokens.
   // Anything at or above the window size means history falls off the end
   // uncompacted, which is the failure this is guarding.
+  // MEASURED AGAINST THE WINDOW, not against a number typed in here
+  // (2026-08-16). This used to assert `< 10_000`, and that absolute figure
+  // was only ever shorthand for "sixteen messages at the 630 tokens a
+  // message memory.ts measured". When the threshold moved to 12k the test
+  // caught it - correctly - but a bare number cannot say WHY it is the
+  // limit, and the next person to raise one without the other gets the same
+  // silent failure. Deriving it from lastMessages means the two can no
+  // longer drift apart without this failing, whatever either is set to.
+  const windowTokens = config.lastMessages * 630;
   assert.ok(
-    om.observation.messageTokens < 10_000,
-    `observation fires at ${om.observation.messageTokens} tokens, which must be well inside the window`
+    om.observation.messageTokens < windowTokens,
+    `observation fires at ${om.observation.messageTokens} tokens against a `
+      + `${config.lastMessages}-message window worth about ${windowTokens}; `
+      + 'a threshold at or above the window never folds before history scrolls away'
   );
   assert.ok(om.reflection.observationTokens > 0, 'and observations get reflected down in turn');
 });

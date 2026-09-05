@@ -15,6 +15,9 @@ import { nerys } from './characters/nerys.js';
 import { ash } from './characters/ash.js';
 import { doran } from './characters/doran.js';
 import { aveline } from './characters/aveline.js';
+import { fanshawe } from './characters/fanshawe.js';
+import { lordgemma } from './characters/lordgemma.js';
+import { sirqwen } from './characters/sirqwen.js';
 
 const CAST: Record<string, CharacterSheet> = {
   guy,
@@ -27,7 +30,10 @@ const CAST: Record<string, CharacterSheet> = {
   nerys,
   ash,
   doran,
-  aveline
+  aveline,
+  lordgemma,
+  sirqwen,
+  fanshawe
 };
 
 const wanted = String(process.env.NPC_CHARACTER ?? 'guy').toLowerCase();

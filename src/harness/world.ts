@@ -19,8 +19,17 @@
  * it is not knowledge until somebody goes and looks.
  */
 
-export const TOWN = process.env.ARENA_TOWN_SCENE ?? 'reldens-town';
-export const INN = process.env.ARENA_INN_SCENE ?? 'reldens-house-1';
+// Both of these named retired rooms until 2026-08-21. `reldens-town` and
+// `reldens-house-1` were carried into the valley by upstream ec2126 and are
+// gone; every coordinate below them described a map that no longer exists, so
+// a character "knowing its way around" was being handed directions into empty
+// space. reflex.ts had already moved on and named the live rooms itself, which
+// left the two files disagreeing about where home is - the stale half of that
+// split is what this replaces.
+export const TOWN = process.env.ARENA_TOWN_SCENE ?? 'the-valley';
+export const INN = process.env.ARENA_INN_SCENE ?? 'the-valley-inn';
+/** The North path's first stop, and the only door out of the valley. */
+export const STAIR = process.env.ARENA_STAIR_SCENE ?? 'millers-stair';
 
 export type Place = { x: number; y: number; description: string };
 
@@ -28,35 +37,105 @@ export type Place = { x: number; y: number; description: string };
  * Home turf. Every coordinate was checked against the map's collision layers
  * and confirmed reachable on foot *from the door a character arrives through* -
  * not merely unblocked, which is weaker and lets a tile sit behind a wall.
+ *
+ * The valley entries are the map's own `return-point-*` properties, read out
+ * of world-content/maps/the-valley.json: the tile the engine itself stands a
+ * character on when it comes back out of each building. Nothing is more surely
+ * walkable than the spot the engine picks to put a body, and it saves guessing
+ * at a doorway's approach from the collision layer.
+ *
+ * The stair's are its arrival point and the centroids of the three nearest
+ * respawn patches, taken from the map's own respawn-area layers. It is a
+ * Voronoi maze - 20,245 of its 33,792 tiles are wall - so these are the
+ * destinations, not the route; the pathfinder still has to find the way.
  */
 export const PLACES: Record<string, Record<string, Place>> = {
   [TOWN]: {
-    'the west road': { x: 16, y: 592, description: 'where the road leaves town westward' },
-    'the south field': { x: 496, y: 880, description: 'open grass south of the houses' },
-    'the east gate': { x: 1168, y: 656, description: 'the east way out of town' },
-    'the north path': { x: 816, y: 176, description: 'the top of town, near the trees' },
-    'outside the inn': { x: 400, y: 336, description: "the street in front of Barnaby's door" },
-    'outside the second house': {
-      x: 1264,
-      y: 656,
-      description: 'the door of the other house, over on the east side'
-    }
+    'the north road': {
+      x: 2144,
+      y: 96,
+      description: "the top of the valley road, where it climbs out onto Miller's Stair"
+    },
+    'the smithy door': { x: 2912, y: 1088, description: "the way in to Nerys's forge" },
+    'the mage shop door': { x: 2560, y: 1312, description: "the way in to Wren's shop" },
+    'the inn door': { x: 1632, y: 1312, description: "the way in to Barnaby's inn" },
+    'the trading post door': { x: 2560, y: 1568, description: 'the way in to the trading post' },
+    'the grange door': { x: 1248, y: 1312, description: 'the way in to the grange' },
+    'the shrine door': { x: 416, y: 1056, description: 'the way in to the shrine' },
+    // NOT "the middle of the valley", which is what this was first called:
+    // door matching runs before the same-room check and matches loosely on
+    // shared words, so that name collided with the doors to `the-valley-inn`
+    // and the rest, and a character asking for it walked into the inn. Any
+    // place name here that contains "valley" has the same problem.
+    'the open ground': { x: 2272, y: 1184, description: 'the middle of the valley, where Aveline stands' },
+    'the west end': { x: 352, y: 1504, description: 'the low western corner, where Doran stands' }
   },
   [INN]: {
-    'the bar': { x: 720, y: 464, description: 'where Barnaby stands' },
-    'the back table': { x: 624, y: 432, description: 'a table on the far side of the room' },
-    'the fireplace corner': { x: 496, y: 592, description: 'the quiet corner near the front' },
-    'the foot of the stairs': {
-      x: 752,
-      y: 464,
-      description: 'the bottom of the stairs up, right beside the bar'
+    'the bar': { x: 416, y: 160, description: 'where Barnaby stands' },
+    'the middle of the floor': {
+      x: 672,
+      y: 608,
+      description: 'clear floor in the middle of the room, in line with the door'
     },
-    'the inn door': { x: 528, y: 624, description: 'the way back out to the street' }
+    'the near table': { x: 352, y: 352, description: 'the table Hollis keeps' },
+    'the far table': { x: 608, y: 352, description: "the table on Marren's side" },
+    'the inn door': { x: 672, y: 736, description: 'the way back out to the valley' }
+  },
+  [STAIR]: {
+    'the valley gate': {
+      x: 6048,
+      y: 11104,
+      description: 'the cut in the south wall, back down to the valley'
+    },
+    'the first bay': { x: 7200, y: 10784, description: 'the passing bay just up the stair, where scuttlers work' },
+    'the low bay': { x: 4256, y: 10976, description: 'the bay west along the bottom, thick with grubs' },
+    'the upper bay': { x: 5024, y: 9504, description: 'the next bay up the climb, grubs again' }
   }
 };
 
 export function placesIn(scene: string): Record<string, Place> {
   return PLACES[scene] ?? {};
+}
+
+/**
+ * How many pixels a tile is, in a given room.
+ *
+ * THE HARNESS ASSUMED 32 EVERYWHERE, and for the demo world that was true -
+ * reflex.ts still says so in as many words: "the forest is 145x145 tiles, the
+ * grassland 30x20, the shore 60x40, all at 32px a tile". Every room upstream
+ * has built since is 64: the valley is 68x40 at 64, its interiors likewise,
+ * Miller's Stair 192x176 at 64. Read off each map's own `tilewidth` in
+ * world-content/maps, not inferred.
+ *
+ * Getting this wrong is not a rounding error, it is a different map. An enemy
+ * on tile (14,43) sits at pixel (928, 2784); converted at 32 it comes out at
+ * (464, 1392), the wrong half of the room, and a walk aimed there arrives
+ * nowhere near it. Distances break the other way: `distanceFromSelf` is in
+ * pixels, so dividing by 32 in a 64px room reports every enemy as twice as
+ * far as it is, which is how a 14-tile leash came to reject things standing
+ * seven tiles away and the pair spent an evening swinging at nothing.
+ */
+const TILE_PX: Record<string, number> = {
+  [TOWN]: 64,
+  [INN]: 64,
+  [STAIR]: 64,
+  'the-valley-smithy': 64,
+  'the-valley-mage': 64,
+  'the-valley-trading-post': 64,
+  'the-valley-grange': 64,
+  'the-valley-shrine': 64
+};
+
+/**
+ * 32 is the default, and it is right for more of the world than "legacy"
+ * suggests. Every room that predates the valley is 32, and so is every one
+ * of the twelve frontier rooms added on 2026-08-22 - measured off their own
+ * maps, not assumed. Only the valley, its six interiors and Miller's Stair
+ * are 64, and they are all listed above. So a room missing from that table
+ * is 32 by fact rather than by hope.
+ */
+export function tilePxFor(scene: string | null | undefined): number {
+  return (scene && TILE_PX[scene]) || 32;
 }
 
 /** Whether this is somewhere the character grew up knowing its way around. */
@@ -143,8 +222,34 @@ export function roomOf(place: string): string | null {
  * is up there, which is the thing worth going to find out.
  */
 export const SCENE_NAMES: Record<string, string> = {
-  [TOWN]: 'town',
+  [TOWN]: 'the valley',
   [INN]: "Barnaby's inn",
+  // The valley's other five interiors, and the stair above it. Without these
+  // the fallback below hands a character the database key with its hyphens
+  // filed off - "the valley smithy", "millers stair" - which is close enough
+  // to read past and wrong enough to say out loud.
+  [STAIR]: "Miller's Stair",
+  'the-valley-smithy': "the smithy",
+  'the-valley-mage': "the mage's shop",
+  'the-valley-trading-post': 'the trading post',
+  'the-valley-grange': 'the grange',
+  'the-valley-shrine': 'the shrine',
+  // The frontier, opened 2026-08-22. Four cardinal paths lead out of the
+  // valley, three stops each; the harness reached this world knowing only
+  // the first stop of one of them. Named here because the fallback files
+  // the hyphens off a key and says "widows watch" and "salt vein" out loud.
+  'millrace-approach': 'the mill road',
+  'millrace-ford': 'the Millrace Ford',
+  'reed-camp': 'the reed camp',
+  'driftwood-landing': 'Driftwood Landing',
+  'oathstone': 'the Oathstone',
+  'bleaching-flats': 'the bleaching flats',
+  'caravan-rest': 'the caravan rest',
+  'sinkfoot-crossing': 'Sinkfoot Crossing',
+  'grey-reeds': 'the grey reeds',
+  'last-farm': 'the last farm',
+  'widows-watch': "Widow's Watch",
+  'salt-vein': 'the salt vein',
   'reldens-house-1-2d-floor': 'upstairs at the inn',
   'reldens-house-2': 'the house on the east side',
   'reldens-forest': 'the woods',

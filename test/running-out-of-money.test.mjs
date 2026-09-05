@@ -76,8 +76,20 @@ test('every character in the world goes through the fallback, none named directl
     !/model: sheet\.model[,\s]/.test(source),
     'a character wired straight to one model is one that stops when the money does'
   );
-  // And every sheet still names something real for it to prefer.
+  // And every sheet still names something real for it to prefer - which since
+  // the local-model characters arrived is no longer always an OpenRouter id
+  // (2026-08-16). Fanshawe runs gemma-4-31b and the two grinders run
+  // qwen3-vl-32b, all three against a llama-server on this machine.
+  // withFallback() handles them deliberately: when NPC_MODEL_URL is set the
+  // chain is one entry long, because there is no cloud underneath a box in
+  // the same room. Giving them OpenRouter ids to satisfy this assertion
+  // would put a paid call in front of every local retry - the exact thing
+  // models.ts refuses to do.
   for (const sheet of await wholeCast()) {
-    assert.ok(sheet.model && sheet.model.startsWith('openrouter/'), `${sheet.playerName} has no model`);
+    assert.ok(sheet.model, `${sheet.playerName} has no model`);
+    assert.ok(
+      sheet.model.startsWith('openrouter/') || !sheet.model.includes('/'),
+      `${sheet.playerName} names neither an OpenRouter model nor a local one: ${sheet.model}`
+    );
   }
 });

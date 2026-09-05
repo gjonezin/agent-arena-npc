@@ -60,6 +60,27 @@ const TRIES = 2;
 
 export function withFallback(preferred: string): ModelWithRetries[] {
   const wanted = preferred.trim();
+  // A local, OpenAI-compatible endpoint (llama-server on this machine).
+  // NPC_MODEL_URL points at it, and the chain is one entry long: there is no
+  // cloud underneath a machine in the same room, and falling back to
+  // OpenRouter without a key would only add a failed call in front of every
+  // retry. If the local server is down the character stands still, which is
+  // honest - the fix is the server, not a fallback.
+  const localUrl = process.env.NPC_MODEL_URL?.trim();
+  if (localUrl) {
+    // Mastra wants provider/model ids. "local" is the provider name the logs
+    // will show; llama-server ignores the model field entirely.
+    const routerId = (wanted.includes('/') ? wanted : `local/${wanted || 'model'}`) as `${string}/${string}`;
+    return [{
+      id: 'local',
+      model: {
+        id: routerId,
+        url: localUrl,
+        apiKey: process.env.NPC_MODEL_API_KEY ?? 'local'
+      },
+      maxRetries: TRIES
+    }];
+  }
   if (wanted === FREE_ROUTER || '' === wanted) {
     return [{ id: 'free', model: FREE_ROUTER, maxRetries: TRIES }];
   }

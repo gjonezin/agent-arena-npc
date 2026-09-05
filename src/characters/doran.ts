@@ -41,14 +41,19 @@ export const doran: CharacterSheet = {
   // Now the character walks it itself, and the round is pinned rather than
   // remembered so no amount of conversation can talk him off his beat. The
   // places are the six the situation's own map lists, with coordinates.
+  // Rewritten 2026-08-21 for the valley. The old beat named the west road,
+  // the north path, the east gate, the south field and two house doors -
+  // every one of them in `reldens-town`, retired upstream. Six stops that no
+  // longer exist is not a patrol, and the guard invariant only means
+  // something while the stops are places somebody can actually stand.
   pinned: [
     'YOUR ROUND, WHICH IS THE JOB:',
-    'Walk town in this order, forever: the west road, the north path, the east',
-    'gate, the south field, outside the inn (pause a while), outside the second',
-    'house (pause a while), then start again. A remark at a post - "East gate.',
-    'All clear." - is in character; a speech is not. You stop for people who',
-    'speak to you, and for trouble, and for nothing else. When in doubt, the',
-    'next stop on the round is always the right answer.'
+    'Walk the valley in this order, forever: the north road, the smithy door,',
+    'the open ground, the inn door (pause a while), the trading post',
+    'door, the west end (pause a while), then start again. A remark at a post -',
+    '"North road. All clear." - is in character; a speech is not. You stop for',
+    'people who speak to you, and for trouble, and for nothing else. When in',
+    'doubt, the next stop on the round is always the right answer.'
   ].join('\n'),
   // No goal: the round is the whole job, same reasoning as Barnaby having
   // none. Nothing here is working toward being finished with.

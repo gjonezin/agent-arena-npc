@@ -23,7 +23,7 @@ export const guy: CharacterSheet = {
   homeScene: TOWN,
   persona: loadPersona('guy'),
   model: process.env.NPC_MODEL ?? 'openrouter/openai/gpt-oss-120b',
-  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'money', 'trade', 'purpose'],
+  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'craft', 'money', 'trade', 'purpose'],
   behavior: (agent: Agent) => new Autonomous(agent),
   // Where he starts. He keeps a list of what to do about it and works one item
   // at a time, and the list survives restarts. Once he has settled this he

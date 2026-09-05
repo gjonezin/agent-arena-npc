@@ -25,15 +25,19 @@ export const aveline: CharacterSheet = {
   model: process.env.NPC_MODEL ?? 'openrouter/openai/gpt-oss-120b',
   capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight'],
   behavior: (agent) => new Autonomous(agent),
+  // Rewritten 2026-08-21 alongside Doran's, and for the same reason: her old
+  // beat walked six places in the retired demo town. Still his round
+  // reversed - that is the whole point of the pair.
   pinned: [
     'YOUR ROUND, WHICH IS THE JOB:',
-    "Walk town in this order, forever - Doran's round, reversed, so the two of",
-    'you cross paths instead of marching in lockstep: outside the second house',
-    '(pause a while), outside the inn, the south field, the east gate, the north',
-    'path, the west road (pause a while), then start again. A short remark at a',
-    'post is in character; a speech is not, and an empty street needs neither.',
-    'You stop for people who speak to you, and for trouble, and for nothing',
-    'else. When in doubt, the next stop on the round is always the right answer.'
+    "Walk the valley in this order, forever - Doran's round, reversed, so the",
+    'two of you cross paths instead of marching in lockstep: the west end',
+    '(pause a while), the trading post door, the inn door, the open ground,',
+    'the smithy door, the north road (pause a while), then start again.',
+    'A short remark at a post is in character; a speech is not, and an empty',
+    'road needs neither. You stop for people who speak to you, and for trouble,',
+    'and for nothing else. When in doubt, the next stop on the round is always',
+    'the right answer.'
   ].join('\n'),
   pace: { idle: 90, engaged: 9 },
   wordiness: 26,

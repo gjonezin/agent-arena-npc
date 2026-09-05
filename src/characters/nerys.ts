@@ -29,7 +29,7 @@ export const nerys: CharacterSheet = {
   homeScene: TOWN,
   persona: loadPersona('nerys'),
   model: process.env.NPC_MODEL ?? 'openrouter/openai/gpt-oss-120b',
-  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'money', 'trade', 'purpose'],
+  capabilities: ['speak', 'talk_to_folk', 'walk', 'doors', 'fight', 'duel', 'craft', 'money', 'trade', 'purpose'],
   behavior: (agent: Agent) => new Autonomous(agent),
   goal: {
     aim: 'get far enough up the volcano to find out what is actually '
