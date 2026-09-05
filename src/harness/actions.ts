@@ -4029,6 +4029,61 @@ export class Actions {
     return { ok: true, note: `gathered ${took} from ${label}` };
   }
 
+  /**
+   * Cook what has been caught, at the fire in the room.
+   *
+   * The last link of the only profession chain these two can finish at level
+   * one: the pond in town yields `spotted_fish` at 24 xp a charge, and
+   * `cook_smoked_spotted_fish` turns one into 18 xp of cooking at any
+   * `cook_fire`. The inn they idle in holds one.
+   *
+   * `craft()` and `recipesAt()` have existed and been correct for weeks with
+   * NO CALLER anywhere in the round, so cooking could never move whatever the
+   * world shipped. This is the caller.
+   *
+   * Deliberately incapable of a journey, like the gather beat beside it: it
+   * cooks at a fire that is already in the observation, or says plainly that
+   * there is none. Walking to another room is an errand, and errands are
+   * what cost this pair their evenings.
+   */
+  async cookHere(
+    recipe = 'cook_smoked_spotted_fish',
+    input = 'spotted_fish',
+    label = 'cook fire'
+  ): Promise<ActionResult> {
+    if (!this.can('craft')) {
+      return { ok: false, note: 'this character does not craft' };
+    }
+    // NOTHING TO COOK IS NOT A FAILURE. The round offers this beat freely, so
+    // an empty pack must answer cheaply and without a call to the world.
+    const held = this.sellableItems().find((line) => line.key === input);
+    if (!held || held.quantity < 1) {
+      return { ok: true, note: `nothing to cook - no ${input} in the pack` };
+    }
+    const fire = this.findNearby(label, 'npc');
+    if (!fire || 'number' !== typeof fire.objectId) {
+      return { ok: true, note: `no ${label} within sight` };
+    }
+    const made = await this.craft(recipe, fire.objectId);
+    if (made.ok) {
+      return made;
+    }
+    // ONE WALK, THEN GIVE UP. Interaction reach is about two tiles, and a
+    // fire against a wall is exactly the shape the cask has never been
+    // reachable in (#505). So a refusal for distance earns one approach and
+    // one retry, and never a second - a beat that keeps walking at furniture
+    // is the wedge this harness already knows.
+    if (!/too far|TOO_FAR/i.test(String(made.note ?? ''))) {
+      return made;
+    }
+    const near = this.standableTilesNear(fire.tileX ?? 0, fire.tileY ?? 0)[0];
+    if (!near) {
+      return { ok: false, note: `${label} has no floor beside it` };
+    }
+    await this.goTo(near.x, near.y);
+    return this.craft(recipe, fire.objectId);
+  }
+
   async gather(objectId: number, label = 'node'): Promise<ActionResult> {
     if (!this.can('craft')) {
       return { ok: false, note: 'this character does not gather' };

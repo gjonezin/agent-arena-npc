@@ -1519,6 +1519,8 @@ export class KnightsRound {
   /** Items a counter has said outright it does not carry. */
   private unstocked = new Set<string>();
   private drankThisRest = false;
+  /** One cook beat per stay in the inn. Cleared with the rest. */
+  private cookedThisRest = false;
   /** So the refused-errand note is said once, not every beat. */
   /** When the last emergency cask run was taken. See the recovery block. */
   private recoveredAt = 0;
@@ -2902,6 +2904,7 @@ export class KnightsRound {
       this.recoveryAnnounced = false;
       // The errand earns its own mug even if the last town rest spent one.
       this.drankThisRest = false;
+    this.cookedThisRest = false;
       this.leg = 'resting';
       return this.again(scene, danger, hp, partnerLoc, ownLoc);
     }
@@ -3889,6 +3892,16 @@ export class KnightsRound {
           }
           this.drankThisRest = true;
           return { action: 'drink_ale' as never } as Intent;
+        }
+        // COOK BEFORE LEAVING. The fire is in this room and the fish is in
+        // the pack; the only place both are true is here, and the body is
+        // about to walk out. One beat per stay - cookHere() answers without
+        // a call to the world when there is nothing to cook, so an empty
+        // pack costs a flag and no time.
+        if (INN === scene && !this.cookedThisRest
+          && true === this.options.professions?.includes('cooking')) {
+          this.cookedThisRest = true;
+          return { action: 'cook_here' as never } as Intent;
         }
         // Having drunk, get back out of the inn rather than resting in it.
         if (INN === scene) {

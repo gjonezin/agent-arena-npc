@@ -2371,6 +2371,12 @@ export class Npc {
                 ? await actions.perform({ action: 'attack' as never, target: target.label } as never, scene)
                 : { ok: false, note: 'no drops in sight anywhere' };
             }
+          } else if ('cook_here' === (step.action as string)) {
+            // THE COOK BEAT. `craft()` and `recipesAt()` have been correct and
+            // callerless for weeks, so cooking could not move whatever the
+            // world shipped. This is the caller. It is cheap when the pack
+            // holds no fish: it answers without touching the world.
+            outcome = await actions.cookHere();
           } else if ('gather_nearby' === (step.action as string)) {
             // THE TRADE BEAT. One beat in eight - GATHER_EVERY_N_BEATS,
             // reflex.ts, which has been 16, 0 and 1 and is now 8. One was a
@@ -3003,8 +3009,38 @@ export class Npc {
         modelSettings: { temperature: 0.85, frequencyPenalty: 0.3, presencePenalty: 0.6 }
       });
       meter(this.sheet.playerName, 'living', response);
-      const called = (response as { toolCalls?: Array<{ toolName?: string }> }).toolCalls ?? [];
-      const names = called.map((call) => call?.toolName ?? 'tool').join(', ');
+      // NAME THE TOOL, WHATEVER THE SDK CALLS THE FIELD.
+      //
+      // This read `toolName` alone, which is undefined on every call object
+      // this framework returns, so every turn logged `(tool, tool, tool)` and
+      // a successful tool call was anonymous. Only a FAILING call carried a
+      // name, through a different line. The cost was not cosmetic: "the model
+      // never calls arena_craft" could not be tested, because a call that
+      // worked left no name behind.
+      //
+      // The shape is not documented and has changed before, so read every
+      // place a name has been seen to live, and when none of them holds one,
+      // say what the keys WERE - a line that names the field is worth more
+      // than another `tool`.
+      const called = ((response as unknown) as {
+        toolCalls?: Array<Record<string, unknown>>
+      }).toolCalls ?? [];
+      const nameOf = (call: Record<string, unknown> | null): string => {
+        if (!call) {
+          return 'tool';
+        }
+        const direct = call.toolName ?? call.name ?? call.tool ?? call.type;
+        if ('string' === typeof direct && direct.length) {
+          return direct;
+        }
+        const fn = call.function as { name?: unknown } | undefined;
+        if ('string' === typeof fn?.name && fn.name.length) {
+          return fn.name;
+        }
+        const keys = Object.keys(call);
+        return keys.length ? `tool?{${keys.slice(0, 4).join(',')}}` : 'tool';
+      };
+      const names = called.map((call) => nameOf(call)).join(', ');
       const thought = String((response as { text?: string }).text ?? '').trim();
       log(`turn: ${called.length} action(s)${names ? ` (${names})` : ''}`);
       if (thought) {
